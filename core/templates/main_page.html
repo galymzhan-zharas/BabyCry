@@ -1,0 +1,95 @@
+<!-- main_page.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="bg-[#98fb98] hover:bg-[#65f765] w-[266px] h-[264px] rounded-full mx-auto mt-48 flex items-center justify-center">
+    <button id="recordButton" onclick="startRecording()">
+      <i class="fa-solid fa-play text-8xl"></i>
+    </button>
+    <p id="listeningText" class="text-white absolute bottom-0 mb-5" style="display:none;">Listening...</p>
+  </div>
+  <!-- <button id="recordButton">Start Recording</button> -->
+  <audio controls id="audioPlayer" style="display:none;"></audio>
+
+  <form method="post" enctype="multipart/form-data" id="audioForm" style="display:none;">
+    {% csrf_token %}
+    <input type="file" name="audio_file" id="audioInput" style="display:none;">
+    <button type="submit">Submit Recording</button>
+  </form>
+
+  <script>
+    const recordButton = document.getElementById('recordButton');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const audioForm = document.getElementById('audioForm');
+    const audioInput = document.getElementById('audioInput');
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false; // Added variable to track recording state
+
+    recordButton.addEventListener('click', () => {
+      const iconElement = recordButton.querySelector('i');
+
+      if (!isRecording) {
+        // Start recording
+        iconElement.classList.replace('fa-play', 'fa-stop');
+        startRecording();
+      } else {
+        // Stop recording
+        iconElement.classList.replace('fa-stop', 'fa-play');
+        stopRecording();
+      }
+    });
+
+    function startRecording() {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then((stream) => {
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.ondataavailable = handleDataAvailable;
+          mediaRecorder.onstop = handleRecordingStop;
+          isRecording = true; // Set recording state
+          audioPlayer.srcObject = stream;
+          audioPlayer.play();
+
+          mediaRecorder.start();
+        })
+        .catch((error) => {
+          console.error('Error accessing microphone:', error);
+        });
+      
+      document.getElementById('listeningText').style.display = 'block';
+
+    }
+
+    function stopRecording() {
+      mediaRecorder.stop();
+      audioPlayer.srcObject = null;
+      isRecording = false; // Reset recording state
+
+      document.getElementById('listeningText').style.display = 'none';
+    }
+
+    function handleDataAvailable(event) {
+      if (event.data.size > 0) {
+        audioChunks.push(event.data);
+      }
+    }
+
+    function handleRecordingStop() {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      audioPlayer.src = audioUrl;
+      audioPlayer.style.display = 'block';
+
+      const audioFile = new File([audioBlob], 'recording.wav', { type: 'audio/wav' });
+      audioInput.files = createFileList(audioFile);
+      audioForm.style.display = 'block';
+    }
+
+    function createFileList(...files) {
+      const dataTransfer = new DataTransfer();
+      files.forEach(file => dataTransfer.items.add(file));
+      return dataTransfer.files;
+    }
+
+  </script>
+{% endblock %}

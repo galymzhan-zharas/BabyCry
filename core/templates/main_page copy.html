@@ -1,0 +1,81 @@
+<!-- main_page.html -->
+<!-- {% extends 'base.html' %} -->
+
+{% block content %}
+  <!-- <div class="w-[266px] h-[264px] bg-green-300 rounded-full mx-auto mt-48 flex items-center justify-center">
+    <button id="recordButton">
+      <i class="fa-solid fa-microphone text-white text-8xl"></i>
+    </button>
+    
+  </div> -->
+  
+  <audio controls id="audioPlayer" style="display:none;"></audio>
+  <form method="post" enctype="multipart/form-data" id="audioForm" style="display:none;">
+    {% csrf_token %}
+    <input type="file" name="audio_file" id="audioInput" style="display:none;">
+    <button type="submit">Submit Recording</button>
+  </form>
+
+  <script>
+    const recordButton = document.getElementById('recordButton');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const audioForm = document.getElementById('audioForm');
+    const audioInput = document.getElementById('audioInput');
+    let mediaRecorder;
+    let audioChunks = [];
+
+    recordButton.addEventListener('click', () => {
+      if (recordButton.textContent === 'Start Recording') {
+        startRecording();
+      } else {
+        stopRecording();
+      }
+    });
+
+    function startRecording() {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then((stream) => {
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.ondataavailable = handleDataAvailable;
+          mediaRecorder.onstop = handleRecordingStop;
+          recordButton.textContent = 'Stop Recording';
+          audioPlayer.srcObject = stream;
+          audioPlayer.play();
+
+          mediaRecorder.start();
+        })
+        .catch((error) => {
+          console.error('Error accessing microphone:', error);
+        });
+    }
+
+    function stopRecording() {
+      mediaRecorder.stop();
+      audioPlayer.srcObject = null;
+      recordButton.textContent = 'Start Recording';
+    }
+
+    function handleDataAvailable(event) {
+      if (event.data.size > 0) {
+        audioChunks.push(event.data);
+      }
+    }
+
+    function handleRecordingStop() {
+      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      audioPlayer.src = audioUrl;
+      audioPlayer.style.display = 'block';
+
+      const audioFile = new File([audioBlob], 'recording.wav', { type: 'audio/wav' });
+      audioInput.files = createFileList(audioFile);
+      audioForm.style.display = 'block';
+    }
+
+    function createFileList(...files) {
+      const dataTransfer = new DataTransfer();
+      files.forEach(file => dataTransfer.items.add(file));
+      return dataTransfer.files;
+    }
+  </script>
+{% endblock %}
